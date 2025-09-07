@@ -1,0 +1,705 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MEMORAZI</title>
+    <!-- Tailwind CSS for modern styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@700&family=Quicksand:wght@400;600&display=swap" rel="stylesheet">
+    <style>
+        /* Custom styles to integrate the font and manage layout */
+        body {
+            font-family: 'Quicksand', sans-serif;
+            overflow: hidden;
+        }
+        .font-dancing {
+            font-family: 'Dancing Script', cursive;
+        }
+        /* Custom animation for ripple effect on button */
+        #addMemoryBtn:active::after {
+            content: "";
+            position: absolute;
+            border-radius: 50%;
+            width: 120px;
+            height: 120px;
+            background: rgba(255, 255, 255, 0.3);
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) scale(0);
+            animation: ripple 0.5s ease-out forwards;
+            z-index: -1;
+        }
+        @keyframes ripple {
+            to {
+                transform: translate(-50%, -50%) scale(1.5);
+                opacity: 0;
+            }
+        }
+    </style>
+</head>
+<body class="bg-[#faf6f9] flex justify-center items-center h-screen m-0 p-0">
+
+    <!-- Intro Screen -->
+    <div id="introScreen" class="absolute inset-0 bg-[#99004c] z-20 flex justify-center items-center cursor-pointer transition-opacity duration-1000">
+        <h1 class="font-dancing text-8xl md:text-9xl text-[#ffb5c0] select-none" style="text-shadow: 2px 2px 8px rgba(0,0,0,0.2);">Memorazi</h1>
+    </div>
+
+    <!-- Main Content with Canvas -->
+    <div id="mainContent" class="absolute inset-0 bg-[#faf6f9] z-10 opacity-0 transition-opacity duration-1000 flex justify-center items-center">
+        <canvas id="memoraziCanvas" class="w-[95vw] h-[95vh] max-w-[1200px] max-h-[800px] bg-white border-3 border-[#ffc2d1] rounded-xl shadow-2xl block"></canvas>
+    </div>
+
+    <!-- Floating Action Button to Add Memory -->
+    <button id="addMemoryBtn" class="hidden fixed bottom-8 right-8 bg-gradient-to-br from-[#ff5f8d] to-[#ffb5c0] text-white rounded-full w-16 h-16 text-4xl justify-center items-center cursor-pointer shadow-lg hover:scale-110 transition-transform z-50">
+        +
+    </button>
+
+    <!-- Modal for Adding a New Memory -->
+    <div id="addMemoryModal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-[51] flex justify-center items-center transition-opacity duration-300">
+        <div class="bg-white p-8 rounded-lg shadow-xl w-11/12 max-w-md">
+            <h2 class="text-2xl font-bold text-[#99004c] mb-4">Add a New Memory</h2>
+            <form id="addMemoryForm">
+                <input id="captionInput" type="text" placeholder="Memory Caption" class="w-full p-3 mb-4 border border-gray-300 rounded-md focus:ring-2 focus:ring-[#ffb5c0] focus:outline-none" required>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Upload an Image (PNG, JPG)</label>
+                <input id="imageFileInput" type="file" accept="image/png, image/jpeg, image/jpg" class="w-full p-2 mb-2 border border-gray-300 rounded-md">
+                <p class="text-center text-gray-500 my-2">or</p>
+                <input id="imageUrlInput" type="url" placeholder="Paste an Image URL" class="w-full p-3 mb-6 border border-gray-300 rounded-md focus:ring-2 focus:ring-[#ffb5c0] focus:outline-none">
+                <div class="flex justify-end space-x-4">
+                    <button type="button" id="cancelAddBtn" class="px-6 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300">Cancel</button>
+                    <button type="submit" class="px-6 py-2 bg-[#ff5f8d] text-white rounded-md hover:bg-[#ff407d]">Add</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal for Editing a Memory -->
+    <div id="editMemoryModal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-[51] flex justify-center items-center transition-opacity duration-300">
+        <div class="bg-white p-8 rounded-lg shadow-xl w-11/12 max-w-md">
+            <h2 class="text-2xl font-bold text-[#99004c] mb-4">Edit Memory</h2>
+            <form id="editMemoryForm">
+                <input id="editCaptionInput" type="text" placeholder="Memory Caption" class="w-full p-3 mb-4 border border-gray-300 rounded-md focus:ring-2 focus:ring-[#ffb5c0] focus:outline-none" required>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Upload a New Image (Optional)</label>
+                <input id="editImageFileInput" type="file" accept="image/png, image/jpeg, image/jpg" class="w-full p-2 mb-2 border border-gray-300 rounded-md">
+                <p class="text-center text-gray-500 my-2">or</p>
+                <input id="editImageUrlInput" type="url" placeholder="Paste a New Image URL" class="w-full p-3 mb-6 border border-gray-300 rounded-md focus:ring-2 focus:ring-[#ffb5c0] focus:outline-none">
+                <div class="flex justify-end space-x-4">
+                    <button type="button" id="cancelEditBtn" class="px-6 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300">Cancel</button>
+                    <button type="submit" class="px-6 py-2 bg-[#ff5f8d] text-white rounded-md hover:bg-[#ff407d]">Save Changes</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal for Searching Memories -->
+    <div id="searchModal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-[51] flex justify-center items-center transition-opacity duration-300">
+        <div class="bg-white p-8 rounded-lg shadow-xl w-11/12 max-w-md">
+            <h2 class="text-2xl font-bold text-[#99004c] mb-4">Search Memories</h2>
+            <form id="searchForm">
+                <input id="searchInput" type="text" placeholder="Enter caption to find..." class="w-full p-3 mb-6 border border-gray-300 rounded-md focus:ring-2 focus:ring-[#ffb5c0] focus:outline-none">
+                <div class="flex justify-end space-x-4">
+                    <button type="button" id="clearSearchBtn" class="px-6 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300">Clear</button>
+                    <button type="button" id="cancelSearchBtn" class="px-6 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300">Cancel</button>
+                    <button type="submit" class="px-6 py-2 bg-[#ff5f8d] text-white rounded-md hover:bg-[#ff407d]">Search</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <!-- Modal for Error Messages -->
+    <div id="alertModal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex justify-center items-center transition-opacity duration-300">
+        <div class="bg-white p-8 rounded-lg shadow-xl w-11/12 max-w-md text-center">
+            <h2 class="text-2xl font-bold text-red-600 mb-4">Oops!</h2>
+            <p id="alertMessage" class="text-gray-700 mb-6"></p>
+            <button id="closeAlertBtn" class="px-8 py-2 bg-red-500 text-white rounded-md hover:bg-red-600">Close</button>
+        </div>
+    </div>
+
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const canvas = document.getElementById('memoraziCanvas');
+            const ctx = canvas.getContext('2d');
+            const addMemoryBtn = document.getElementById('addMemoryBtn');
+            const introScreen = document.getElementById('introScreen');
+            const mainContent = document.getElementById('mainContent');
+
+            // Modal elements
+            const addMemoryModal = document.getElementById('addMemoryModal');
+            const addMemoryForm = document.getElementById('addMemoryForm');
+            const captionInput = document.getElementById('captionInput');
+            const imageUrlInput = document.getElementById('imageUrlInput');
+            const imageFileInput = document.getElementById('imageFileInput');
+            const cancelAddBtn = document.getElementById('cancelAddBtn');
+            
+            const editMemoryModal = document.getElementById('editMemoryModal');
+            const editMemoryForm = document.getElementById('editMemoryForm');
+            const editCaptionInput = document.getElementById('editCaptionInput');
+            const editImageUrlInput = document.getElementById('editImageUrlInput');
+            const editImageFileInput = document.getElementById('editImageFileInput');
+            const cancelEditBtn = document.getElementById('cancelEditBtn');
+
+            const searchModal = document.getElementById('searchModal');
+            const searchForm = document.getElementById('searchForm');
+            const searchInput = document.getElementById('searchInput');
+            const cancelSearchBtn = document.getElementById('cancelSearchBtn');
+            const clearSearchBtn = document.getElementById('clearSearchBtn');
+
+            const alertModal = document.getElementById('alertModal');
+            const alertMessage = document.getElementById('alertMessage');
+            const closeAlertBtn = document.getElementById('closeAlertBtn');
+
+            const config = {
+                cardWidth: 280,
+                cardHeight: 350,
+                cardPadding: 15,
+                cardSpacing: 50,
+                headerHeight: 120,
+                titleFontSize: 40,
+                captionFontSize: 20,
+                searchBarWidth: 300,
+                searchBarHeight: 40,
+                colors: {
+                    background: '#faf6f9',
+                    cardBody: '#ffffff',
+                    captionText: '#99004c',
+                    headerText: '#ffb5c0',
+                    searchBarBackground: '#ffffff',
+                    searchBarBorder: '#ffc2d1',
+                    searchBarPlaceholder: '#aaa'
+                }
+            };
+
+            const state = {
+                scrollOffset: 0,
+                targetScrollOffset: 0,
+                searchTerm: '',
+                hoveredCard: null,
+                isDragging: false,
+                lastX: 0,
+                cards: [],
+                activeMenuCard: null,
+                cardToEdit: null,
+            };
+            
+            // --- Local Storage Functions ---
+            const saveMemoriesToStorage = () => {
+                // Data URLs can be very long, so this might make localStorage bulky.
+                // For a small number of personal memories, it's acceptable.
+                const memoriesToSave = state.cards.map(card => ({
+                    id: card.id,
+                    caption: card.caption,
+                    imageUrl: card.imageUrl // This will be a web URL or a base64 data URL
+                }));
+                localStorage.setItem('memoraziMemories', JSON.stringify(memoriesToSave));
+            };
+
+            const loadMemoriesFromStorage = () => {
+                const storedMemories = localStorage.getItem('memoraziMemories');
+                if (storedMemories) {
+                    const parsedMemories = JSON.parse(storedMemories);
+                    if (parsedMemories.length > 0) {
+                        parsedMemories.forEach(mem => createNewMemory(mem.caption, mem.imageUrl, false, mem.id, false));
+                    } else {
+                         loadInitialMemories();
+                    }
+                } else {
+                   loadInitialMemories();
+                }
+            };
+
+            const loadInitialMemories = () => {
+                const initialMemories = [
+                    { 
+                        id: Date.now() + 1, 
+                        caption: "Héro every-nyan!", 
+                        // NOTE: Google Photos links don't work. Using a placeholder.
+                        imageUrl: "https://placehold.co/400x300/ffb5c0/99004c?text=Héro+every-nyan!" 
+                    },
+                ];
+                initialMemories.forEach(mem => createNewMemory(mem.caption, mem.imageUrl, false, mem.id, false));
+                saveMemoriesToStorage();
+            };
+
+
+            // --- Custom Modals ---
+            const showAlert = (message) => {
+                alertMessage.textContent = message;
+                alertModal.classList.remove('hidden');
+            };
+
+            closeAlertBtn.addEventListener('click', () => alertModal.classList.add('hidden'));
+
+            // --- Scroll Clamping ---
+            const clampScroll = () => {
+                const filteredCards = state.cards.filter(card => 
+                    card.caption.toLowerCase().includes(state.searchTerm.toLowerCase())
+                );
+                if (filteredCards.length === 0) {
+                    state.targetScrollOffset = 0; return;
+                }
+
+                const totalWidth = filteredCards.length * (config.cardWidth + config.cardSpacing) - config.cardSpacing;
+                if (totalWidth < canvas.width) {
+                    state.targetScrollOffset = 0; return;
+                }
+
+                const galleryStartX = (canvas.width / 2) - (totalWidth / 2);
+                const maxScroll = -galleryStartX + (canvas.width / 2) - (config.cardWidth / 2);
+                const minScroll = (canvas.width / 2) - (galleryStartX + totalWidth) + (config.cardWidth / 2);
+                state.targetScrollOffset = Math.max(minScroll, Math.min(maxScroll, state.targetScrollOffset));
+            };
+
+            // --- Drawing Functions ---
+            const drawRoundedRect = (x, y, width, height, radius) => {
+                ctx.beginPath();
+                ctx.moveTo(x + radius, y);
+                ctx.lineTo(x + width - radius, y);
+                ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
+                ctx.lineTo(x + width, y + height - radius);
+                ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
+                ctx.lineTo(x + radius, y + height);
+                ctx.quadraticCurveTo(x, y + height, x, y + height - radius);
+                ctx.lineTo(x, y + radius);
+                ctx.quadraticCurveTo(x, y, x + radius, y);
+                ctx.closePath();
+            };
+
+            const drawShadow = (x, y, width, height, radius, alpha) => {
+                ctx.save();
+                ctx.shadowColor = `rgba(0, 0, 0, ${alpha})`;
+                ctx.shadowBlur = 10;
+                ctx.shadowOffsetX = 0;
+                ctx.shadowOffsetY = 10;
+                ctx.fillStyle = config.colors.cardBody;
+                drawRoundedRect(x, y, width, height, radius);
+                ctx.fill();
+                ctx.restore();
+            };
+            
+            const drawHeader = () => {
+                ctx.fillStyle = config.colors.headerText;
+                ctx.font = `700 ${config.titleFontSize}px 'Dancing Script', cursive`;
+                ctx.textAlign = 'left';
+                ctx.fillText('Memorazi', 50, 75);
+
+                const urduText = "میمورازی";
+                const tamilText = "மெமோராஸி";
+                const malayalamText = "മെമ്മോറാസി";
+                
+                ctx.font = `400 16px 'Quicksand', sans-serif`; 
+                ctx.fillStyle = '#ff8fab';
+                
+                ctx.fillText(`${urduText} • ${tamilText} • ${malayalamText}`, 55, 100);
+
+                drawSearchBar();
+            };
+
+            const drawSearchBar = () => {
+                const x = canvas.width - config.searchBarWidth - 50;
+                const y = (config.headerHeight / 2) - (config.searchBarHeight / 2);
+                ctx.save();
+                ctx.shadowColor = "rgba(0,0,0,0.1)";
+                ctx.shadowBlur = 6;
+                ctx.shadowOffsetY = 2;
+                ctx.fillStyle = config.colors.searchBarBackground;
+                drawRoundedRect(x, y, config.searchBarWidth, config.searchBarHeight, 20);
+                ctx.fill();
+                ctx.restore();
+                
+                ctx.strokeStyle = config.colors.searchBarBorder;
+                ctx.lineWidth = 1;
+                drawRoundedRect(x, y, config.searchBarWidth, config.searchBarHeight, 20);
+                ctx.stroke();
+
+                ctx.fillStyle = config.colors.searchBarPlaceholder;
+                ctx.font = `400 16px 'Quicksand', sans-serif`;
+                ctx.textAlign = 'left';
+                const placeholder = '🔍 Click to search...';
+                ctx.fillText(state.searchTerm ? `Searching: ${state.searchTerm}` : placeholder, x + 15, y + 25);
+            };
+
+            const drawCards = () => {
+                const y = config.headerHeight + 50;
+                const filteredCards = state.cards.filter(card => card.caption.toLowerCase().includes(state.searchTerm.toLowerCase()));
+                if (filteredCards.length === 0) return;
+
+                const totalWidth = filteredCards.length * (config.cardWidth + config.cardSpacing) - config.cardSpacing;
+                
+                filteredCards.forEach((card, index) => {
+                    const isHovered = card === state.hoveredCard;
+                    const x = (canvas.width / 2) - (totalWidth / 2) + (index * (config.cardWidth + config.cardSpacing)) + state.scrollOffset;
+                    if (x > canvas.width + 100 || x < -config.cardWidth - 100) return;
+
+                    const rotateAngle = isHovered && state.activeMenuCard !== card ? 0 : (index % 2 === 0 ? -2 : 2);
+                    const scaleFactor = isHovered && state.activeMenuCard !== card ? 1.05 : 1;
+
+                    ctx.save();
+                    ctx.translate(x + config.cardWidth / 2, y + config.cardHeight / 2);
+                    ctx.rotate(rotateAngle * Math.PI / 180);
+                    ctx.scale(scaleFactor, scaleFactor);
+                    ctx.translate(-(x + config.cardWidth / 2), -(y + config.cardHeight / 2));
+                    
+                    drawShadow(x, y, config.cardWidth, config.cardHeight, 10, isHovered ? 0.2 : 0.1);
+                    
+                    ctx.fillStyle = config.colors.cardBody;
+                    drawRoundedRect(x, y, config.cardWidth, config.cardHeight, 10);
+                    ctx.fill();
+
+                    if (card.imageObj && card.imageObj.complete) {
+                        const imgX = x + config.cardPadding;
+                        const imgY = y + config.cardPadding;
+                        const imgWidth = config.cardWidth - config.cardPadding * 2;
+                        const imgHeight = (config.cardHeight - config.cardPadding * 2) * 0.8;
+                        ctx.drawImage(card.imageObj, imgX, imgY, imgWidth, imgHeight);
+                    } else {
+                        ctx.fillStyle = '#f0f0f0';
+                        ctx.fillRect(x + config.cardPadding, y + config.cardPadding, config.cardWidth - config.cardPadding * 2, (config.cardHeight - config.cardPadding * 2) * 0.8);
+                        ctx.fillStyle = config.colors.captionText;
+                        ctx.font = `400 14px 'Quicksand', sans-serif`;
+                        ctx.textAlign = 'center';
+                        ctx.fillText("Loading...", x + config.cardWidth / 2, y + config.cardPadding + ((config.cardHeight - config.cardPadding * 2) * 0.8) / 2);
+                    }
+                    
+                    ctx.fillStyle = config.colors.captionText;
+                    ctx.font = `600 ${config.captionFontSize}px 'Quicksand', sans-serif`;
+                    ctx.textAlign = 'center';
+                    ctx.fillText(card.caption, x + config.cardWidth / 2, y + config.cardHeight - config.cardPadding - 10);
+
+                    const menuIconRadius = 2.5;
+                    const menuIconX = x + config.cardWidth - config.cardPadding - 5;
+                    const menuIconY = y + config.cardPadding + 5;
+
+                    if (isHovered || card === state.activeMenuCard) {
+                        ctx.fillStyle = 'rgba(0, 0, 0, 0.4)';
+                        ctx.beginPath(); ctx.arc(menuIconX, menuIconY - 8, menuIconRadius, 0, Math.PI * 2); ctx.fill();
+                        ctx.beginPath(); ctx.arc(menuIconX, menuIconY, menuIconRadius, 0, Math.PI * 2); ctx.fill();
+                        ctx.beginPath(); ctx.arc(menuIconX, menuIconY + 8, menuIconRadius, 0, Math.PI * 2); ctx.fill();
+                    }
+                    
+                    if (card === state.activeMenuCard) {
+                        const menuWidth = 120;
+                        const menuHeight = 70;
+                        const menuX = menuIconX - menuWidth - 5;
+                        const menuY = menuIconY + 15;
+                        
+                        ctx.save();
+                        ctx.fillStyle = 'white';
+                        ctx.shadowColor = 'rgba(0,0,0,0.2)';
+                        ctx.shadowBlur = 10;
+                        ctx.shadowOffsetY = 5;
+                        drawRoundedRect(menuX, menuY, menuWidth, menuHeight, 5);
+                        ctx.fill();
+                        ctx.restore();
+
+                        ctx.fillStyle = '#333';
+                        ctx.font = `400 16px 'Quicksand', sans-serif`;
+                        ctx.textAlign = 'left';
+                        ctx.fillText("Edit Memory", menuX + 10, menuY + 25);
+                        ctx.fillStyle = 'red';
+                        ctx.fillText("Delete Memory", menuX + 10, menuY + 55);
+                    }
+                    ctx.restore();
+                });
+            };
+
+            const draw = () => {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                drawHeader();
+                drawCards();
+            };
+
+            const animate = () => {
+                const scrollDiff = state.targetScrollOffset - state.scrollOffset;
+                if (Math.abs(scrollDiff) > 0.1) {
+                    state.scrollOffset += scrollDiff * 0.1;
+                } else {
+                    state.scrollOffset = state.targetScrollOffset;
+                }
+                draw();
+                requestAnimationFrame(animate);
+            };
+
+            // --- Memory Management ---
+            const createNewMemory = (caption, imageUrl, focus = true, id = Date.now(), save = true) => {
+                const img = new Image();
+                img.crossOrigin = "Anonymous";
+                img.onload = () => draw();
+                img.onerror = () => {
+                    showAlert(`Failed to load image. Please check the URL or file.`);
+                    state.cards = state.cards.filter(c => c.id !== id);
+                    if(save) saveMemoriesToStorage();
+                    draw();
+                };
+                img.src = imageUrl;
+
+                const newCard = { id, caption, imageUrl, imageObj: img };
+                state.cards.push(newCard);
+                
+                if (focus) {
+                    const filteredCards = state.cards.filter(card => card.caption.toLowerCase().includes(state.searchTerm.toLowerCase()));
+                    const newCardIndex = filteredCards.length - 1;
+                    
+                    if (newCardIndex !== -1) {
+                        const totalWidth = filteredCards.length * (config.cardWidth + config.cardSpacing) - config.cardSpacing;
+                        const cardXWithoutScroll = (canvas.width / 2) - (totalWidth / 2) + (newCardIndex * (config.cardWidth + config.cardSpacing));
+                        const targetX = (canvas.width / 2) - (config.cardWidth / 2);
+                        state.targetScrollOffset = targetX - cardXWithoutScroll;
+                        clampScroll();
+                    }
+                }
+                if(save) saveMemoriesToStorage();
+                draw();
+            };
+
+            const deleteMemory = (cardToDelete) => {
+                state.cards = state.cards.filter(card => card.id !== cardToDelete.id);
+                state.hoveredCard = null;
+                saveMemoriesToStorage();
+                clampScroll();
+                draw();
+            };
+
+            const updateMemory = (id, newCaption, newImageUrl) => {
+                const cardToUpdate = state.cards.find(c => c.id === id);
+                if (!cardToUpdate) return;
+
+                cardToUpdate.caption = newCaption;
+                // Only update the image if a new URL is provided
+                if (newImageUrl && cardToUpdate.imageUrl !== newImageUrl) {
+                    cardToUpdate.imageUrl = newImageUrl;
+                    const img = new Image();
+                    img.crossOrigin = "Anonymous";
+                    img.onload = () => draw();
+                    img.onerror = () => showAlert(`Failed to load updated image.`);
+                    img.src = newImageUrl;
+                    cardToUpdate.imageObj = img;
+                }
+                saveMemoriesToStorage();
+                draw();
+            };
+
+            // --- Event Handling ---
+            const handleImageFile = (file, callback) => {
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        callback(e.target.result);
+                    };
+                    reader.readAsDataURL(file);
+                } else {
+                    callback(null);
+                }
+            };
+
+            addMemoryForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+                const caption = captionInput.value;
+                const file = imageFileInput.files[0];
+                const url = imageUrlInput.value;
+
+                handleImageFile(file, (dataUrl) => {
+                    const imageUrl = dataUrl || url;
+                    if (caption && imageUrl) {
+                        createNewMemory(caption, imageUrl);
+                        addMemoryModal.classList.add('hidden');
+                        addMemoryForm.reset();
+                    } else {
+                        showAlert('Please provide a caption and an image source (file or URL).');
+                    }
+                });
+            });
+            addMemoryBtn.addEventListener('click', () => addMemoryModal.classList.remove('hidden'));
+            cancelAddBtn.addEventListener('click', () => {
+                addMemoryModal.classList.add('hidden');
+                addMemoryForm.reset();
+            });
+
+            editMemoryForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+                if (state.cardToEdit) {
+                    const newCaption = editCaptionInput.value;
+                    const file = editImageFileInput.files[0];
+                    const url = editImageUrlInput.value;
+
+                    handleImageFile(file, (dataUrl) => {
+                        const newImageUrl = dataUrl || url || state.cardToEdit.imageUrl;
+                        updateMemory(state.cardToEdit.id, newCaption, newImageUrl);
+                        editMemoryModal.classList.add('hidden');
+                        state.cardToEdit = null;
+                        editMemoryForm.reset();
+                    });
+                }
+            });
+            cancelEditBtn.addEventListener('click', () => {
+                editMemoryModal.classList.add('hidden');
+                state.cardToEdit = null;
+                editMemoryForm.reset();
+            });
+
+            searchForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+                state.searchTerm = searchInput.value;
+                state.targetScrollOffset = 0;
+                state.scrollOffset = 0;
+                searchModal.classList.add('hidden');
+            });
+
+            clearSearchBtn.addEventListener('click', () => {
+                state.searchTerm = '';
+                searchInput.value = '';
+                state.targetScrollOffset = 0;
+                state.scrollOffset = 0;
+                searchModal.classList.add('hidden');
+            });
+            cancelSearchBtn.addEventListener('click', () => searchModal.classList.add('hidden'));
+
+            const getMousePos = (event) => ({ x: event.clientX - canvas.getBoundingClientRect().left, y: event.clientY - canvas.getBoundingClientRect().top });
+            
+            const checkCardHover = (mousePos) => {
+                const y = config.headerHeight + 50;
+                const filteredCards = state.cards.filter(card => card.caption.toLowerCase().includes(state.searchTerm.toLowerCase()));
+                if (filteredCards.length === 0) {
+                    state.hoveredCard = null; return;
+                }
+                const totalWidth = filteredCards.length * (config.cardWidth + config.cardSpacing) - config.cardSpacing;
+                const galleryX = (canvas.width / 2) - (totalWidth / 2);
+                
+                let newHoveredCard = null;
+                for (let i = filteredCards.length - 1; i >= 0; i--) {
+                    const card = filteredCards[i];
+                    const x = galleryX + (i * (config.cardWidth + config.cardSpacing)) + state.scrollOffset;
+                    if (mousePos.x >= x && mousePos.x <= x + config.cardWidth && mousePos.y >= y && mousePos.y <= y + config.cardHeight) {
+                        newHoveredCard = card;
+                        break;
+                    }
+                }
+                state.hoveredCard = newHoveredCard;
+            };
+
+            canvas.addEventListener('mousemove', (event) => {
+                const mousePos = getMousePos(event);
+                checkCardHover(mousePos);
+                if (state.isDragging) {
+                    const deltaX = mousePos.x - state.lastX;
+                    state.targetScrollOffset += deltaX;
+                    state.lastX = mousePos.x;
+                    clampScroll();
+                }
+            });
+            
+            canvas.addEventListener('mousedown', (event) => {
+                const mousePos = getMousePos(event);
+                let eventHandled = false;
+
+                const isClickInsideRect = (pos, rect) => {
+                    return rect && pos.x >= rect.x && pos.x <= rect.x + rect.width &&
+                           pos.y >= rect.y && pos.y <= rect.y + rect.height;
+                };
+                
+                const getElementRect = (elementType, card = null) => {
+                    if (elementType === 'searchBar') {
+                        return { x: canvas.width - config.searchBarWidth - 50, y: (config.headerHeight / 2) - (config.searchBarHeight / 2), width: config.searchBarWidth, height: config.searchBarHeight };
+                    }
+
+                    if (card) {
+                        const filteredCards = state.cards.filter(c => c.caption.toLowerCase().includes(state.searchTerm.toLowerCase()));
+                        const cardIndex = filteredCards.findIndex(c => c.id === card.id);
+                        if (cardIndex === -1) return null;
+
+                        const totalWidth = filteredCards.length * (config.cardWidth + config.cardSpacing) - config.cardSpacing;
+                        const x = (canvas.width / 2) - (totalWidth / 2) + (cardIndex * (config.cardWidth + config.cardSpacing)) + state.scrollOffset;
+                        const y = config.headerHeight + 50;
+
+                        if (elementType === 'menuIcon') {
+                            const menuIconX = x + config.cardWidth - config.cardPadding - 5;
+                            const menuIconY = y + config.cardPadding + 5;
+                            const hitbox = 15;
+                            return { x: menuIconX - hitbox, y: menuIconY - hitbox, width: hitbox * 2, height: hitbox * 2 };
+                        }
+
+                        if (elementType === 'menuDropdown') {
+                            const menuIconX = x + config.cardWidth - config.cardPadding - 5;
+                            const menuIconY = y + config.cardPadding + 5;
+                            return { x: menuIconX - 125, y: menuIconY + 15, width: 120, height: 70 };
+                        }
+                    }
+                    return null;
+                };
+
+                if (state.activeMenuCard) {
+                    const menuRect = getElementRect('menuDropdown', state.activeMenuCard);
+                    if (isClickInsideRect(mousePos, menuRect)) {
+                        if (mousePos.y <= menuRect.y + menuRect.height / 2) {
+                            state.cardToEdit = state.activeMenuCard;
+                            editCaptionInput.value = state.cardToEdit.caption;
+                            editImageUrlInput.value = state.cardToEdit.imageUrl.startsWith('data:') ? '' : state.cardToEdit.imageUrl;
+                            editMemoryModal.classList.remove('hidden');
+                        } else {
+                            deleteMemory(state.activeMenuCard);
+                        }
+                        state.activeMenuCard = null;
+                        eventHandled = true;
+                    } else {
+                        state.activeMenuCard = null;
+                    }
+                }
+
+                if (eventHandled) { draw(); return; }
+
+                if (isClickInsideRect(mousePos, getElementRect('searchBar'))) {
+                    searchInput.value = state.searchTerm;
+                    searchModal.classList.remove('hidden');
+                    eventHandled = true;
+                }
+                
+                if (eventHandled) { draw(); return; }
+
+                if (state.hoveredCard && isClickInsideRect(mousePos, getElementRect('menuIcon', state.hoveredCard))) {
+                    state.activeMenuCard = state.hoveredCard;
+                    eventHandled = true;
+                }
+                
+                if (eventHandled) { draw(); return; }
+
+                state.isDragging = true;
+                state.lastX = mousePos.x;
+            });
+
+            canvas.addEventListener('mouseup', () => { state.isDragging = false; });
+            canvas.addEventListener('mouseleave', () => { state.isDragging = false; state.hoveredCard = null; });
+            canvas.addEventListener('wheel', (event) => { event.preventDefault(); state.targetScrollOffset -= event.deltaY * 0.8; clampScroll(); });
+            
+            const initializeCanvas = () => {
+                canvas.width = mainContent.clientWidth;
+                canvas.height = mainContent.clientHeight;
+                loadMemoriesFromStorage();
+                animate();
+            };
+            
+            introScreen.addEventListener('click', () => {
+                introScreen.classList.add('opacity-0');
+                mainContent.classList.remove('opacity-0');
+                addMemoryBtn.classList.remove('hidden');
+                addMemoryBtn.classList.add('flex');
+                
+                setTimeout(() => {
+                    introScreen.style.display = 'none';
+                    initializeCanvas();
+                }, 1000);
+            });
+
+            window.addEventListener('resize', () => {
+                if (!mainContent.classList.contains('opacity-0')) {
+                    canvas.width = mainContent.clientWidth;
+                    canvas.height = mainContent.clientHeight;
+                    draw();
+                }
+            });
+        });
+    </script>
+</body>
+</html>
